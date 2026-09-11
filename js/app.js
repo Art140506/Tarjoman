@@ -188,6 +188,9 @@
   function handleGeminiError(e) {
     console.error(e);
     if (e && e.code === 'locked') { toast(tt('error_locked')); switchTab('settings'); return; }
+    if (e && e.code === 'no-key') { toast(tt('error_no_key')); switchTab('settings'); return; }
+    if (e && e.code === 'network') { toast(tt('error_network')); return; }
+    if (e && e.code === 'all-keys-failed') { toast(tt('error_all_keys')); switchTab('settings'); return; }
     toast(tt('error_generic'));
   }
 
@@ -539,11 +542,36 @@
       const label = $('#newKeyLabel').value.trim() || tt('key_label');
       const value = $('#newKeyValue').value.trim();
       if (!value) return;
-      await T.keys.add(label, value);
+      const updated = await T.keys.add(label, value);
+      const added = updated[updated.length - 1];
       closeModal('#addKeyModal');
       renderKeyList();
       toast(tt('save'));
+      detectAndApplyModels(value, added && added.id);
     });
+  }
+
+  // بلافاصله پس از افزودن کلید، مدل‌های در دسترسِ همان کلید را از خود Google می‌پرسد،
+  // بهترین مدل متن/بینایی و بهترین مدل TTS را خودکار در تنظیمات می‌نشاند، و کل فهرست رتبه‌بندی‌شده
+  // را روی خودِ کلید ذخیره می‌کند تا در صورت خطا، موتور جایگزین بدون درخواست دوباره‌ی ListModels امتحان شود
+  async function detectAndApplyModels(apiKey, keyId) {
+    toast(tt('detecting_models'));
+    try {
+      const { textModel, ttsModel, textOptions, ttsOptions } = await T.gemini.detectBestModels(apiKey);
+      if (keyId) await T.keys.setModelCandidates(keyId, { textModels: textOptions, ttsModels: ttsOptions });
+      const patch = {};
+      if (textModel) patch.modelText = textModel;
+      if (ttsModel) patch.modelTts = ttsModel;
+      if (!Object.keys(patch).length) { toast(tt('model_detect_failed')); return; }
+      settings = storage.saveSettings(patch);
+      const modelTextInput = $('#modelText');
+      const modelTtsInput = $('#modelTts');
+      if (modelTextInput) modelTextInput.value = settings.modelText;
+      if (modelTtsInput) modelTtsInput.value = settings.modelTts;
+      toast(`${tt('models_detected')}: ${settings.modelText}`);
+    } catch (e) {
+      toast(tt('model_detect_failed'));
+    }
   }
 
   function renderKeyVaultUI() {

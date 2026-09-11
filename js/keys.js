@@ -118,6 +118,42 @@
     activeCount() {
       return (memoryKeys || []).filter((k) => k.active && k.value).length;
     },
+
+    // لیست موتورهای شناسایی‌شده برای این کلید (نتیجه‌ی تشخیص خودکار پس از افزودن کلید)
+    getModelCandidates(id, kind) {
+      const k = (memoryKeys || []).find((x) => x.id === id);
+      if (!k) return [];
+      return (kind === 'tts' ? k.ttsModels : k.textModels) || [];
+    },
+
+    // بعد از تشخیص خودکار (ListModels)، فهرست رتبه‌بندی‌شده‌ی موتورهای متن/بینایی و TTS را روی خودِ کلید ذخیره می‌کند
+    async setModelCandidates(id, { textModels, ttsModels } = {}) {
+      if (!this.isUnlocked()) throw new Error('locked');
+      memoryKeys = memoryKeys.map((k) => (k.id === id
+        ? Object.assign({}, k, {
+          textModels: (textModels || k.textModels || []).slice(0, 8),
+          ttsModels: (ttsModels || k.ttsModels || []).slice(0, 8),
+        })
+        : k));
+      await this.persist();
+      return memoryKeys;
+    },
+
+    // وقتی موتور جایگزین (نه اولین انتخاب) موفق شد، آن را در صفِ همین کلید به جلو می‌آورد
+    // تا دفعه‌ی بعد مستقیم امتحان شود (سریع‌تر، مخصوصاً روی نت کند). ذخیره‌سازی در پس‌زمینه انجام می‌شود.
+    promoteModel(id, kind, modelName) {
+      if (!this.isUnlocked()) return Promise.resolve();
+      const field = kind === 'tts' ? 'ttsModels' : 'textModels';
+      let changed = false;
+      memoryKeys = memoryKeys.map((k) => {
+        if (k.id !== id) return k;
+        const list = (k[field] || []).filter((m) => m !== modelName);
+        list.unshift(modelName);
+        changed = true;
+        return Object.assign({}, k, { [field]: list.slice(0, 8) });
+      });
+      return changed ? this.persist() : Promise.resolve();
+    },
   };
 
   window.Tarjoman = window.Tarjoman || {};
