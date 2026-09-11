@@ -31,8 +31,28 @@
     markCooldown(id, ms = COOLDOWN_MS) { if (!this.isUnlocked()) return; memoryKeys = memoryKeys.map((k) => k.id === id ? Object.assign({}, k, { cooldownUntil: Date.now() + ms }) : k); this.persist().catch(() => {}); },
     clearCooldown(id) { if (!this.isUnlocked()) return; memoryKeys = memoryKeys.map((k) => { if (k.id !== id) return k; const copy = Object.assign({}, k); delete copy.cooldownUntil; return copy; }); this.persist().catch(() => {}); },
     getModelCandidates(id, kind) { const k = (memoryKeys || []).find((x) => x.id === id); if (!k) return []; return (kind === 'tts' ? k.ttsModels : k.textModels) || []; },
-    async setModelCandidates(id, { textModels, ttsModels } = {}) { if (!this.isUnlocked()) throw new Error('locked'); memoryKeys = memoryKeys.map((k) => (k.id === id ? Object.assign({}, k, { textModels: (textModels || k.textModels || []).slice(0, 8), ttsModels: (ttsModels || k.ttsModels || []).slice(0, 8) }) : k)); await this.persist(); return memoryKeys; },
-    promoteModel(id, kind, modelName) { if (!this.isUnlocked()) return Promise.resolve(); const field = kind === 'tts' ? 'ttsModels' : 'textModels'; let changed = false; memoryKeys = memoryKeys.map((k) => { if (k.id !== id) return k; const list = (k[field] || []).filter((m) => m !== modelName); list.unshift(modelName); changed = true; return Object.assign({}, k, { [field]: list.slice(0, 8) }); }); return changed ? this.persist() : Promise.resolve(); },
+    async setModelCandidates(id, { textModels, ttsModels } = {}) {
+      if (!this.isUnlocked()) throw new Error('locked');
+      const clean = (list) => Array.from(new Set((list || []).filter((m) => typeof m === 'string' && m.trim()).map((m) => m.trim())));
+      memoryKeys = memoryKeys.map((k) => (k.id === id ? Object.assign({}, k, {
+        textModels: textModels === undefined ? (k.textModels || []) : clean(textModels),
+        ttsModels: ttsModels === undefined ? (k.ttsModels || []) : clean(ttsModels),
+      }) : k));
+      await this.persist();
+      return memoryKeys;
+    },
+    promoteModel(id, kind, modelName) {
+      if (!this.isUnlocked()) return Promise.resolve();
+      const field = kind === 'tts' ? 'ttsModels' : 'textModels';
+      let changed = false;
+      memoryKeys = memoryKeys.map((k) => {
+        if (k.id !== id) return k;
+        const list = (k[field] || []).filter((m) => m !== modelName);
+        list.unshift(modelName); changed = true;
+        return Object.assign({}, k, { [field]: list });
+      });
+      return changed ? this.persist() : Promise.resolve();
+    },
   };
   window.Tarjoman = window.Tarjoman || {};
   window.Tarjoman.keys = Keys;
