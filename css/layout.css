@@ -1,0 +1,155 @@
+/* ترجمان — چیدمان کلی برنامه */
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* هدر */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.brand-mark {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.brand-tagline {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* بدنه: کنار (rail) در دسکتاپ، پایین (bar) در موبایل */
+.app-body {
+  flex: 1;
+  display: flex;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.nav-rail {
+  display: none;
+}
+
+.main-view {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 18px 96px;
+}
+
+.tab-panel { display: none; }
+.tab-panel.is-active { display: block; animation: fade-in .18s var(--ease); }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bottom-nav {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: space-around;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  z-index: 30;
+}
+.nav-btn {
+  flex: 1;
+  max-width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.nav-btn svg { width: 21px; height: 21px; }
+.nav-btn.is-active { color: var(--accent); }
+
+@media (min-width: 860px) {
+  .app-body { gap: 8px; }
+  .bottom-nav { display: none; }
+  .nav-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 76px;
+    padding: 18px 8px;
+    border-inline-end: 1px solid var(--border);
+  }
+  .nav-rail .nav-btn { max-width: none; padding: 10px 4px; }
+  .main-view { padding: 28px 28px 60px; }
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  color: var(--text);
+}
+.section-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 16px;
+  max-width: 60ch;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 5, .45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+}
+@media (min-width: 640px) {
+  .modal-overlay { align-items: center; }
+}
+.modal-sheet {
+  background: var(--surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 82vh;
+  overflow-y: auto;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  box-shadow: var(--shadow-1);
+}
+@media (min-width: 640px) {
+  .modal-sheet { border-radius: var(--radius-lg); max-height: 76vh; }
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}

@@ -1,0 +1,137 @@
+/* ترجمان — اجزای رابط کاربری قابل‌استفاده مجدد */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding: 11px 20px;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .12s var(--ease), background .15s var(--ease), opacity .15s var(--ease);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.btn:hover { background: var(--accent-strong); }
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.btn.ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn.ghost:hover { background: var(--surface-2); }
+
+.btn.danger { background: transparent; color: var(--danger); border-color: var(--border); }
+.btn.danger:hover { background: var(--accent-soft); }
+
+.btn.sm { padding: 7px 14px; font-size: 13px; }
+
+.btn.icon {
+  width: 40px; height: 40px; padding: 0; border-radius: 50%;
+  background: transparent; color: var(--text); border: 1px solid var(--border);
+}
+.btn.icon:hover { background: var(--surface-2); }
+.btn.icon svg { width: 19px; height: 19px; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.field label {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.input, textarea.input, select.input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  font-size: 14.5px;
+  color: var(--text);
+  width: 100%;
+}
+.input:focus { border-color: var(--accent); }
+textarea.input { resize: vertical; min-height: 90px; line-height: 1.7; }
+
+.select-wrap { position: relative; }
+select.input { appearance: none; padding-inline-end: 32px; cursor: pointer; }
+.select-wrap::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: 14px; top: 50%;
+  width: 8px; height: 8px;
+  border-inline-end: 2px solid var(--text-muted);
+  border-block-end: 2px solid var(--text-muted);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-pill);
+  padding: 7px 15px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.chip.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.row-list { display: flex; flex-direction: column; gap: 8px; }
+.row-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 12px 14px; background: var(--surface);
+}
+.row-item .meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.row-item .meta strong { font-size: 14px; font-weight: 600; }
+.row-item .meta span { font-size: 12.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-item .actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.badge {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: var(--radius-pill);
+  background: var(--surface-2); color: var(--text-muted);
+}
+.badge.on { background: var(--accent-soft); color: var(--accent); }
+
+.empty-state {
+  text-align: center; padding: 36px 16px; color: var(--text-muted); font-size: 13.5px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 88px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: var(--bg);
+  padding: 10px 18px; border-radius: var(--radius-pill);
+  font-size: 13.5px; z-index: 60; opacity: 0; pointer-events: none;
+  transition: opacity .2s var(--ease), transform .2s var(--ease);
+}
+.toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+@media (min-width: 860px) { .toast { bottom: 28px; } }
+
+.spinner {
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 2px solid currentColor; border-inline-start-color: transparent;
+  animation: spin .7s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
