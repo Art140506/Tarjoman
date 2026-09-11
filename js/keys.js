@@ -2,6 +2,7 @@
 (function () {
   const storage = () => window.Tarjoman.storage;
   const COOLDOWN_MS = 60 * 1000;
+  const MODEL_DISCOVERY_VERSION = 2;
   let memoryKeys = null;
   let cryptoKey = null;
   function b64(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))); }
@@ -13,7 +14,21 @@
     isUnlocked() { return Array.isArray(memoryKeys); },
     hasVault() { return storage().hasVault(); },
     async setup(passphrase, initialKeys) { memoryKeys = initialKeys || []; const vault = await encryptKeys(passphrase, memoryKeys); storage().saveKeyVault(vault); return true; },
-    async unlock(passphrase) { const vault = storage().getKeyVault(); if (!vault) throw new Error('no-vault'); memoryKeys = await decryptVault(passphrase, vault); return memoryKeys; },
+    async unlock(passphrase) {
+      const vault = storage().getKeyVault(); if (!vault) throw new Error('no-vault');
+      memoryKeys = await decryptVault(passphrase, vault);
+      const legacy = memoryKeys.some((k) => k.textModels !== undefined && k.modelDiscoveryVersion !== MODEL_DISCOVERY_VERSION);
+      if (legacy) {
+        memoryKeys = memoryKeys.map((k) => {
+          if (k.modelDiscoveryVersion === MODEL_DISCOVERY_VERSION) return k;
+          const copy = Object.assign({}, k);
+          delete copy.textModels; delete copy.ttsModels; delete copy.modelDiscoveryVersion;
+          return copy;
+        });
+        await this.persist();
+      }
+      return memoryKeys;
+    },
     lock() { memoryKeys = null; cryptoKey = null; },
     async persist() { if (!cryptoKey || !memoryKeys) return; const vault = storage().getKeyVault(); const iv = crypto.getRandomValues(new Uint8Array(12)); const enc = new TextEncoder(); const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, enc.encode(JSON.stringify(memoryKeys))); storage().saveKeyVault({ salt: vault.salt, iv: b64(iv), cipher: b64(cipherBuf) }); },
     list() { return memoryKeys || []; },
@@ -31,8 +46,29 @@
     markCooldown(id, ms = COOLDOWN_MS) { if (!this.isUnlocked()) return; memoryKeys = memoryKeys.map((k) => k.id === id ? Object.assign({}, k, { cooldownUntil: Date.now() + ms }) : k); this.persist().catch(() => {}); },
     clearCooldown(id) { if (!this.isUnlocked()) return; memoryKeys = memoryKeys.map((k) => { if (k.id !== id) return k; const copy = Object.assign({}, k); delete copy.cooldownUntil; return copy; }); this.persist().catch(() => {}); },
     getModelCandidates(id, kind) { const k = (memoryKeys || []).find((x) => x.id === id); if (!k) return []; return (kind === 'tts' ? k.ttsModels : k.textModels) || []; },
-    async setModelCandidates(id, { textModels, ttsModels } = {}) { if (!this.isUnlocked()) throw new Error('locked'); memoryKeys = memoryKeys.map((k) => (k.id === id ? Object.assign({}, k, { textModels: (textModels || k.textModels || []).slice(0, 8), ttsModels: (ttsModels || k.ttsModels || []).slice(0, 8) }) : k)); await this.persist(); return memoryKeys; },
-    promoteModel(id, kind, modelName) { if (!this.isUnlocked()) return Promise.resolve(); const field = kind === 'tts' ? 'ttsModels' : 'textModels'; let changed = false; memoryKeys = memoryKeys.map((k) => { if (k.id !== id) return k; const list = (k[field] || []).filter((m) => m !== modelName); list.unshift(modelName); changed = true; return Object.assign({}, k, { [field]: list.slice(0, 8) }); }); return changed ? this.persist() : Promise.resolve(); },
+    async setModelCandidates(id, { textModels, ttsModels } = {}) {
+      if (!this.isUnlocked()) throw new Error('locked');
+      const clean = (list) => Array.from(new Set((list || []).filter((m) => typeof m === 'string' && m.trim()).map((m) => m.trim())));
+      memoryKeys = memoryKeys.map((k) => (k.id === id ? Object.assign({}, k, {
+        textModels: textModels === undefined ? (k.textModels || []) : clean(textModels),
+        ttsModels: ttsModels === undefined ? (k.ttsModels || []) : clean(ttsModels),
+        modelDiscoveryVersion: MODEL_DISCOVERY_VERSION,
+      }) : k));
+      await this.persist();
+      return memoryKeys;
+    },
+    promoteModel(id, kind, modelName) {
+      if (!this.isUnlocked()) return Promise.resolve();
+      const field = kind === 'tts' ? 'ttsModels' : 'textModels';
+      let changed = false;
+      memoryKeys = memoryKeys.map((k) => {
+        if (k.id !== id) return k;
+        const list = (k[field] || []).filter((m) => m !== modelName);
+        list.unshift(modelName); changed = true;
+        return Object.assign({}, k, { [field]: list });
+      });
+      return changed ? this.persist() : Promise.resolve();
+    },
   };
   window.Tarjoman = window.Tarjoman || {};
   window.Tarjoman.keys = Keys;

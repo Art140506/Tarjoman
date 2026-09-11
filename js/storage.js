@@ -7,8 +7,8 @@
     theme: 'system',
     defaultTarget: 'en',
     defaultTone: 'literary',
-    modelText: 'gemini-2.5-flash',
-    modelTts: 'gemini-2.5-flash-preview-tts',
+    modelText: 'auto',
+    modelTts: 'auto',
     ttsVoice: 'Kore',
   };
 
