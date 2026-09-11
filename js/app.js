@@ -531,8 +531,12 @@
     });
     $('#btnUnlock').addEventListener('click', async () => {
       const pass = $('#unlockPass').value;
-      try { await T.keys.unlock(pass); renderKeyVaultUI(); renderKeyList(); }
-      catch (e) { toast(tt('error_generic')); }
+      try {
+        await T.keys.unlock(pass);
+        renderKeyVaultUI();
+        renderKeyList();
+        autoDetectAllKeys(); // خودکار: هر کلیدی که هنوز موتورهایش چک نشده، همین‌جا بررسی می‌شود
+      } catch (e) { toast(tt('error_generic')); }
     });
     $('#btnAddKey').addEventListener('click', () => {
       $('#newKeyLabel').value = ''; $('#newKeyValue').value = '';
@@ -542,34 +546,48 @@
       const label = $('#newKeyLabel').value.trim() || tt('key_label');
       const value = $('#newKeyValue').value.trim();
       if (!value) return;
-      const updated = await T.keys.add(label, value);
-      const added = updated[updated.length - 1];
+      await T.keys.add(label, value);
       closeModal('#addKeyModal');
       renderKeyList();
       toast(tt('save'));
-      detectAndApplyModels(value, added && added.id);
+      autoDetectAllKeys(); // کلید تازه هنوز کش مدل ندارد، پس همین یک تابع خودش آن را هم شامل می‌شود
     });
+    $('#btnRecheckModels').addEventListener('click', () => autoDetectAllKeys(true));
   }
 
-  // بلافاصله پس از افزودن کلید، مدل‌های در دسترسِ همان کلید را از خود Google می‌پرسد،
-  // بهترین مدل متن/بینایی و بهترین مدل TTS را خودکار در تنظیمات می‌نشاند، و کل فهرست رتبه‌بندی‌شده
-  // را روی خودِ کلید ذخیره می‌کند تا در صورت خطا، موتور جایگزین بدون درخواست دوباره‌ی ListModels امتحان شود
-  async function detectAndApplyModels(apiKey, keyId) {
+  // برای هر کلیدِ فعالی که هنوز هیچ بررسی‌ای رویش انجام نشده (یا با force=true برای همه‌ی کلیدها)،
+  // موتورهای در دسترس را از خود Google می‌پرسد و در کش همان کلید ذخیره می‌کند.
+  // این تابع در سه‌جا صدا زده می‌شود: بعد از باز شدن قفل گاوصندوق، بعد از افزودن کلید تازه، و با دکمه‌ی «بررسی دوباره».
+  async function autoDetectAllKeys(force) {
+    if (!T.keys.isUnlocked()) return;
+    const targets = T.keys.list().filter((k) => k.value && (force || k.textModels === undefined));
+    if (!targets.length) return;
+
     toast(tt('detecting_models'));
-    try {
-      const { textModel, ttsModel, textOptions, ttsOptions } = await T.gemini.detectBestModels(apiKey);
-      if (keyId) await T.keys.setModelCandidates(keyId, { textModels: textOptions, ttsModels: ttsOptions });
+    let bestText = null, bestTts = null;
+    const results = await Promise.allSettled(targets.map(async (k) => {
+      const r = await T.gemini.detectBestModels(k.value);
+      await T.keys.setModelCandidates(k.id, { textModels: r.textOptions, ttsModels: r.ttsOptions });
+      return r;
+    }));
+    results.forEach((r) => {
+      if (r.status === 'fulfilled') {
+        if (r.value.textModel && !bestText) bestText = r.value.textModel;
+        if (r.value.ttsModel && !bestTts) bestTts = r.value.ttsModel;
+      }
+    });
+
+    if (bestText || bestTts) {
       const patch = {};
-      if (textModel) patch.modelText = textModel;
-      if (ttsModel) patch.modelTts = ttsModel;
-      if (!Object.keys(patch).length) { toast(tt('model_detect_failed')); return; }
+      if (bestText) patch.modelText = bestText;
+      if (bestTts) patch.modelTts = bestTts;
       settings = storage.saveSettings(patch);
       const modelTextInput = $('#modelText');
       const modelTtsInput = $('#modelTts');
       if (modelTextInput) modelTextInput.value = settings.modelText;
       if (modelTtsInput) modelTtsInput.value = settings.modelTts;
       toast(`${tt('models_detected')}: ${settings.modelText}`);
-    } catch (e) {
+    } else {
       toast(tt('model_detect_failed'));
     }
   }
