@@ -5,7 +5,6 @@
   const TEXT_TIMEOUT_MS = 30000;
   const TTS_TIMEOUT_MS = 45000;
   const LIST_TIMEOUT_MS = 15000;
-  const MAX_MODELS_PER_KEY = 4;
   const MAX_NETWORK_FAILURES = 3;
   const MAX_CHUNK_CHARS = 12000;
   const MAX_BATCH_ITEMS = 20;
@@ -34,9 +33,10 @@
   function candidateModelsForKey(k, requested, kind) {
     const cached = window.Tarjoman.keys.getModelCandidates(k.id, kind) || [];
     const fallback = kind === 'tts' ? FALLBACK_TTS_MODELS : FALLBACK_TEXT_MODELS;
+    const requestedModel = requested && requested !== 'auto' ? requested : null;
     const seen = new Set(); const out = [];
-    [requested, ...cached, ...fallback].forEach((m) => { if (m && !seen.has(m)) { seen.add(m); out.push(m); } });
-    return out.slice(0, MAX_MODELS_PER_KEY);
+    [requestedModel, ...cached, ...fallback].forEach((m) => { if (m && !seen.has(m)) { seen.add(m); out.push(m); } });
+    return out;
   }
   function parseApiError(status, body) {
     let message = '';
@@ -162,10 +162,16 @@
       return all;
     },
     async detectBestModels(apiKey) {
-      const models = await listModels(apiKey); const usable = models.filter(supportsGenerate);
+      const models = await listModels(apiKey);
+      const usable = models.filter(supportsGenerate);
       const text = usable.filter((m) => !/tts|embedding|aqa/i.test(m.name)).sort((a, b) => scoreModel(b) - scoreModel(a));
       const tts = usable.filter((m) => /tts/i.test(m.name)).sort((a, b) => scoreModel(b) - scoreModel(a));
-      return { textModel: text[0] ? bareName(text[0]) : null, ttsModel: tts[0] ? bareName(tts[0]) : null, textOptions: text.map(bareName), ttsOptions: tts.map(bareName) };
+      return {
+        textModel: text[0] ? bareName(text[0]) : null,
+        ttsModel: tts[0] ? bareName(tts[0]) : null,
+        textOptions: text.map(bareName),
+        ttsOptions: tts.map(bareName),
+      };
     },
     async synthesizeSpeech({ text, model, voice }) {
       const s = window.Tarjoman.storage.getSettings();
